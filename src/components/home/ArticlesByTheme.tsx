@@ -11,15 +11,16 @@ const THEMES = [
 ]
 
 export default async function ArticlesByTheme() {
-  const payload = await getPayload({ config })
-
-  // Fetch published articles
-  const articles = await payload.find({
-    collection: 'articles',
-    where: {
-      '_status': { equals: 'published' },
-    },
-  })
+  let articles = { docs: [] as any[] }
+  try {
+    const payload = await getPayload({ config })
+    articles = await payload.find({
+      collection: 'articles',
+      where: { '_status': { equals: 'published' } },
+    })
+  } catch (err) {
+    console.error('Failed to fetch articles:', err)
+  }
 
   // Group by theme
   const articlesByTheme = THEMES.map(theme => ({

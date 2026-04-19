@@ -16,12 +16,13 @@ export const metadata = {
 }
 
 export default async function HomePage() {
-  const payload = await getPayload({ config })
-
-  // Fetch home page data
-  const homePage = await payload.findGlobal({
-    slug: 'home-page',
-  })
+  let homePage = null
+  try {
+    const payload = await getPayload({ config })
+    homePage = await payload.findGlobal({ slug: 'home-page' })
+  } catch (err) {
+    console.error('Failed to fetch home page data:', err)
+  }
 
   return (
     <div className="space-y-20 py-12">
