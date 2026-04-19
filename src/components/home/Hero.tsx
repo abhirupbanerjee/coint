@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 interface HeroProps {
-  data: {
+  data?: {
     heroHeading?: string
     heroSubheading?: string
     heroBody?: string
