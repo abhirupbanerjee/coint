@@ -1,29 +1,31 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import type { Article } from '@/lib/schema'
-
-const THEMES = [
-  'Leadership and Perception',
-  'Systems and Transformation',
-  'Thinking in the Age of AI',
-  'The Craft of Leadership',
-]
+import type { Theme } from '@/lib/schema'
+import type { ArticleWithThemes } from '@/lib/queries'
 
 interface ArticlesByThemeProps {
-  articles: Article[]
+  themes: Theme[]
+  articles: ArticleWithThemes[]
 }
 
-export default function ArticlesByTheme({ articles }: ArticlesByThemeProps) {
-  const grouped = THEMES.map(theme => ({
+export default function ArticlesByTheme({ themes, articles }: ArticlesByThemeProps) {
+  if (themes.length === 0) return null
+
+  const grouped = themes.map(theme => ({
     theme,
-    articles: articles.filter(a => a.theme === theme).slice(0, 3),
+    articles: articles
+      .filter(a =>
+        a.primaryTheme?.id === theme.id ||
+        a.secondaryThemes.some(s => s.id === theme.id)
+      )
+      .slice(0, 3),
   }))
 
   return (
     <div className="space-y-16">
       {grouped.map(group => (
-        <div key={group.theme}>
-          <h2 className="text-3xl font-serif font-bold mb-8">{group.theme}</h2>
+        <div key={group.theme.id}>
+          <h2 className="text-3xl font-serif font-bold mb-8">{group.theme.name}</h2>
           {group.articles.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               {group.articles.map(article => (

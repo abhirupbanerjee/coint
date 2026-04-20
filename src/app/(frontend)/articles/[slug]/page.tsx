@@ -1,29 +1,22 @@
 import { db } from '@/lib/db'
-import { articles, siteSettings } from '@/lib/schema'
-import { eq, and } from 'drizzle-orm'
+import { siteSettings } from '@/lib/schema'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import Image from 'next/image'
+import Link from 'next/link'
 import ShareButtons from '@/components/articles/ShareButtons'
 import LikeButton from '@/components/articles/LikeButton'
 import FeedbackWidget from '@/components/articles/FeedbackWidget'
 import ArticleBody from '@/components/articles/ArticleBody'
+import { getArticleBySlugWithThemes } from '@/lib/queries'
 
 export const dynamic = 'force-dynamic'
-
-async function getArticle(slug: string) {
-  const [article] = await db
-    .select()
-    .from(articles)
-    .where(and(eq(articles.slug, slug), eq(articles.status, 'published')))
-  return article ?? null
-}
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params
-  const article = await getArticle(slug)
+  const article = await getArticleBySlugWithThemes(slug)
   if (!article) return {}
 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cointelligence.com'
@@ -53,7 +46,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
   const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cointelligence.com'
 
   const [article, settings] = await Promise.all([
-    getArticle(slug),
+    getArticleBySlugWithThemes(slug),
     db.select().from(siteSettings).limit(1).then(rows => rows[0] ?? null),
   ])
 
@@ -98,7 +91,9 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       {/* Header */}
       <header className="mb-12">
         <div className="mb-4">
-          <p className="text-sm font-medium text-primary mb-2">{article.theme}</p>
+          {article.primaryTheme && (
+            <p className="text-sm font-medium text-primary mb-2">{article.primaryTheme.name}</p>
+          )}
           <p className="text-sm text-foreground/60">
             {new Date(article.publishedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             {' · '}{article.readingTime || 5} min read
@@ -106,6 +101,19 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
         </div>
         <h1 className="text-5xl font-serif font-bold leading-tight mb-6">{article.title}</h1>
         <p className="text-xl text-foreground/70 mb-6">{article.excerpt}</p>
+        {article.secondaryThemes.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-6">
+            {article.secondaryThemes.map(t => (
+              <Link
+                key={t.id}
+                href={`/articles?theme=${encodeURIComponent(t.slug)}`}
+                className="px-3 py-1 text-xs rounded-full bg-muted text-foreground/70 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                {t.name}
+              </Link>
+            ))}
+          </div>
+        )}
         <ShareButtons
           title={article.title}
           excerpt={article.excerpt}

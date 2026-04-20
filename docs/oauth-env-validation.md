@@ -173,7 +173,7 @@ docker compose exec app curl -s http://localhost:3000/api/auth/signin | head -20
 ### 5. Test via browser
 ```bash
 # From your local machine
-curl -I https://yourdomain.com/auth/signin
+curl -I https://yourdomain.com/admin/login
 
 # Should return HTTP 200 (OK), not 400 or 500
 ```

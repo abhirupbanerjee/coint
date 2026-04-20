@@ -3,11 +3,11 @@ import Link from 'next/link'
 
 const NAV_ITEMS = [
   { href: '/admin/articles', label: 'Articles' },
+  { href: '/admin/themes', label: 'Themes' },
   { href: '/admin/media', label: 'Media' },
   { href: '/admin/home', label: 'Home Page' },
   { href: '/admin/about', label: 'About' },
   { href: '/admin/work', label: 'Work' },
-  { href: '/admin/co-intelligence', label: 'Co-Intelligence' },
   { href: '/admin/settings', label: 'Settings' },
   { href: '/admin/submissions', label: 'Submissions' },
 ]

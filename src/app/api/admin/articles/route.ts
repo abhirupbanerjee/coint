@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { articles } from '@/lib/schema'
-import { desc } from 'drizzle-orm'
+import { articles, themes, articleSecondaryThemes } from '@/lib/schema'
+import { desc, eq, inArray } from 'drizzle-orm'
 import sanitizeHtml from 'sanitize-html'
 
 function sanitize(html: string) {
@@ -41,6 +41,12 @@ async function requireAdmin() {
   return session
 }
 
+async function validThemeIds(ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set()
+  const rows = await db.select({ id: themes.id }).from(themes).where(inArray(themes.id, ids))
+  return new Set(rows.map(r => r.id))
+}
+
 export async function GET() {
   try {
     await requireAdmin()
@@ -55,11 +61,36 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdmin()
     const body = await req.json()
-    const { title, theme, coverImageUrl, coverImageAlt, body: rawBody, excerpt, featured, publishedDate, status } = body
+    const {
+      title,
+      primaryThemeId,
+      secondaryThemeIds,
+      coverImageUrl,
+      coverImageAlt,
+      body: rawBody,
+      excerpt,
+      featured,
+      publishedDate,
+      status,
+    } = body
 
-    if (!title || !theme) {
-      return NextResponse.json({ error: 'Title and theme are required' }, { status: 400 })
+    if (!title) return NextResponse.json({ error: 'Title is required' }, { status: 400 })
+    const primaryId = Number(primaryThemeId)
+    if (!Number.isFinite(primaryId)) {
+      return NextResponse.json({ error: 'A primary theme is required' }, { status: 400 })
     }
+
+    const secondaryIds: number[] = Array.isArray(secondaryThemeIds)
+      ? Array.from(new Set(secondaryThemeIds.map(Number).filter(Number.isFinite))).filter(id => id !== primaryId)
+      : []
+
+    const valid = await validThemeIds([primaryId, ...secondaryIds])
+    if (!valid.has(primaryId)) return NextResponse.json({ error: 'Primary theme not found' }, { status: 400 })
+
+    const [{ name: primaryName }] = await db
+      .select({ name: themes.name })
+      .from(themes)
+      .where(eq(themes.id, primaryId))
 
     const cleanBody = sanitize(rawBody || '')
     const slug = slugify(title)
@@ -68,7 +99,8 @@ export async function POST(req: NextRequest) {
     const [article] = await db.insert(articles).values({
       title,
       slug,
-      theme,
+      theme: primaryName,
+      primaryThemeId: primaryId,
       coverImageUrl: coverImageUrl || null,
       coverImageAlt: coverImageAlt || null,
       body: cleanBody,
@@ -78,6 +110,13 @@ export async function POST(req: NextRequest) {
       publishedDate: publishedDate ? new Date(publishedDate) : new Date(),
       status: status || 'draft',
     }).returning()
+
+    const validSecondary = secondaryIds.filter(id => valid.has(id))
+    if (validSecondary.length > 0) {
+      await db.insert(articleSecondaryThemes).values(
+        validSecondary.map(themeId => ({ articleId: article.id, themeId }))
+      )
+    }
 
     return NextResponse.json(article, { status: 201 })
   } catch (err) {

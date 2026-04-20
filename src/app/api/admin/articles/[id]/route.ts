@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { articles } from '@/lib/schema'
-import { eq } from 'drizzle-orm'
+import { articles, themes, articleSecondaryThemes } from '@/lib/schema'
+import { eq, inArray } from 'drizzle-orm'
 import sanitizeHtml from 'sanitize-html'
 
 function sanitize(html: string) {
@@ -31,13 +31,24 @@ async function requireAdmin() {
   if (!session?.user) throw new Error('Unauthorized')
 }
 
+async function validThemeIds(ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set()
+  const rows = await db.select({ id: themes.id }).from(themes).where(inArray(themes.id, ids))
+  return new Set(rows.map(r => r.id))
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await requireAdmin()
     const { id } = await params
-    const [article] = await db.select().from(articles).where(eq(articles.id, parseInt(id)))
+    const articleId = parseInt(id)
+    const [article] = await db.select().from(articles).where(eq(articles.id, articleId))
     if (!article) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json(article)
+    const secondary = await db
+      .select({ themeId: articleSecondaryThemes.themeId })
+      .from(articleSecondaryThemes)
+      .where(eq(articleSecondaryThemes.articleId, articleId))
+    return NextResponse.json({ ...article, secondaryThemeIds: secondary.map(s => s.themeId) })
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -47,8 +58,37 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     await requireAdmin()
     const { id } = await params
+    const articleId = parseInt(id)
     const body = await req.json()
-    const { title, theme, coverImageUrl, coverImageAlt, body: rawBody, excerpt, featured, publishedDate, status } = body
+    const {
+      title,
+      primaryThemeId,
+      secondaryThemeIds,
+      coverImageUrl,
+      coverImageAlt,
+      body: rawBody,
+      excerpt,
+      featured,
+      publishedDate,
+      status,
+    } = body
+
+    const primaryId = Number(primaryThemeId)
+    if (!Number.isFinite(primaryId)) {
+      return NextResponse.json({ error: 'A primary theme is required' }, { status: 400 })
+    }
+
+    const secondaryIds: number[] = Array.isArray(secondaryThemeIds)
+      ? Array.from(new Set(secondaryThemeIds.map(Number).filter(Number.isFinite))).filter(n => n !== primaryId)
+      : []
+
+    const valid = await validThemeIds([primaryId, ...secondaryIds])
+    if (!valid.has(primaryId)) return NextResponse.json({ error: 'Primary theme not found' }, { status: 400 })
+
+    const [{ name: primaryName }] = await db
+      .select({ name: themes.name })
+      .from(themes)
+      .where(eq(themes.id, primaryId))
 
     const cleanBody = sanitize(rawBody || '')
     const readingTime = countReadingTime(cleanBody)
@@ -56,7 +96,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const [updated] = await db.update(articles)
       .set({
         title,
-        theme,
+        theme: primaryName,
+        primaryThemeId: primaryId,
         coverImageUrl: coverImageUrl || null,
         coverImageAlt: coverImageAlt || null,
         body: cleanBody,
@@ -67,10 +108,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         status: status || 'draft',
         updatedAt: new Date(),
       })
-      .where(eq(articles.id, parseInt(id)))
+      .where(eq(articles.id, articleId))
       .returning()
 
     if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    await db.delete(articleSecondaryThemes).where(eq(articleSecondaryThemes.articleId, articleId))
+    const validSecondary = secondaryIds.filter(n => valid.has(n))
+    if (validSecondary.length > 0) {
+      await db.insert(articleSecondaryThemes).values(
+        validSecondary.map(themeId => ({ articleId, themeId }))
+      )
+    }
+
     return NextResponse.json(updated)
   } catch (err) {
     console.error(err)

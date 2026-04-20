@@ -1,6 +1,13 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
+import FontPicker from '@/components/admin/FontPicker'
+import {
+  DEFAULT_BODY_FONT,
+  DEFAULT_HEADING_FONT,
+  fontStack,
+  resolveFont,
+} from '@/lib/googleFonts'
 
 export default function SettingsPage() {
   const [isPending, startTransition] = useTransition()
@@ -10,6 +17,8 @@ export default function SettingsPage() {
   const [contactEmail, setContactEmail] = useState('')
   const [linkedinUrl, setLinkedinUrl] = useState('')
   const [whatsappNumber, setWhatsappNumber] = useState('')
+  const [headingFont, setHeadingFont] = useState(DEFAULT_HEADING_FONT)
+  const [bodyFont, setBodyFont] = useState(DEFAULT_BODY_FONT)
 
   useEffect(() => {
     fetch('/api/admin/globals?slug=site-settings').then(r => r.json()).then(data => {
@@ -18,6 +27,8 @@ export default function SettingsPage() {
       setContactEmail(data.contactEmail || '')
       setLinkedinUrl(data.linkedinUrl || '')
       setWhatsappNumber(data.whatsappNumber || '')
+      setHeadingFont(resolveFont(data.headingFont, DEFAULT_HEADING_FONT))
+      setBodyFont(resolveFont(data.bodyFont, DEFAULT_BODY_FONT))
     })
   }, [])
 
@@ -28,7 +39,15 @@ export default function SettingsPage() {
       await fetch('/api/admin/globals?slug=site-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteName, tagline, contactEmail, linkedinUrl, whatsappNumber }),
+        body: JSON.stringify({
+          siteName,
+          tagline,
+          contactEmail,
+          linkedinUrl,
+          whatsappNumber,
+          headingFont,
+          bodyFont,
+        }),
       })
       setSaved(true)
     })
@@ -41,12 +60,51 @@ export default function SettingsPage() {
     <div>
       <h1 className="text-2xl font-serif font-bold text-gray-900 mb-8">Site Settings</h1>
       {saved && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">Saved!</div>}
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-6 space-y-5 max-w-xl">
-        <div><label className={labelCls}>Site Name</label><input type="text" value={siteName} onChange={e => setSiteName(e.target.value)} className={inputCls} /></div>
-        <div><label className={labelCls}>Tagline</label><input type="text" value={tagline} onChange={e => setTagline(e.target.value)} className={inputCls} /></div>
-        <div><label className={labelCls}>Contact Email</label><input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className={inputCls} /></div>
-        <div><label className={labelCls}>LinkedIn URL</label><input type="url" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} className={inputCls} placeholder="https://linkedin.com/in/..." /></div>
-        <div><label className={labelCls}>WhatsApp Number</label><input type="text" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} className={inputCls} placeholder="447911123456 (no + or spaces)" /></div>
+      <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+        <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">General</h2>
+          <div><label className={labelCls}>Site Name</label><input type="text" value={siteName} onChange={e => setSiteName(e.target.value)} className={inputCls} /></div>
+          <div><label className={labelCls}>Tagline</label><input type="text" value={tagline} onChange={e => setTagline(e.target.value)} className={inputCls} /></div>
+          <div><label className={labelCls}>Contact Email</label><input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} className={inputCls} /></div>
+          <div><label className={labelCls}>LinkedIn URL</label><input type="url" value={linkedinUrl} onChange={e => setLinkedinUrl(e.target.value)} className={inputCls} placeholder="https://linkedin.com/in/..." /></div>
+          <div><label className={labelCls}>WhatsApp Number</label><input type="text" value={whatsappNumber} onChange={e => setWhatsappNumber(e.target.value)} className={inputCls} placeholder="447911123456 (no + or spaces)" /></div>
+        </section>
+
+        <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Typography</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Fonts load from Google Fonts at runtime. If a font fails to load, the browser falls back to the category default (serif / sans-serif).
+            </p>
+          </div>
+
+          <FontPicker
+            label="Heading font"
+            value={headingFont}
+            onChange={setHeadingFont}
+            allowedCategories={['serif', 'sans-serif', 'display']}
+            sampleText="Cointelligence"
+          />
+
+          <FontPicker
+            label="Body font"
+            value={bodyFont}
+            onChange={setBodyFont}
+            allowedCategories={['serif', 'sans-serif']}
+            sampleText="The quick brown fox jumps over the lazy dog."
+          />
+
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-5">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Preview</p>
+            <h3 className="text-3xl font-bold text-gray-900 leading-tight mb-3" style={{ fontFamily: fontStack(headingFont) }}>
+              Editorial voices, thoughtful ideas
+            </h3>
+            <p className="text-base text-gray-700 leading-7" style={{ fontFamily: fontStack(bodyFont) }}>
+              Leadership is not a formula — it is the daily practice of seeing what matters and doing the next right thing. Your writing here sets the tone for every reader who arrives.
+            </p>
+          </div>
+        </section>
+
         <button type="submit" disabled={isPending} className="px-6 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors">
           {isPending ? 'Saving…' : 'Save Settings'}
         </button>

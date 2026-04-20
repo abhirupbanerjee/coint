@@ -1,8 +1,5 @@
-import { db } from '@/lib/db'
-import { articles } from '@/lib/schema'
-import { eq, desc } from 'drizzle-orm'
-import Link from 'next/link'
-import Image from 'next/image'
+import ArticlesExplorer, { type ExplorerArticle } from '@/components/articles/ArticlesExplorer'
+import { getAllThemes, getPublishedArticlesWithThemes } from '@/lib/queries'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,92 +8,63 @@ export const metadata = {
   description: 'Read articles on leadership, systems, thinking, and more.',
 }
 
-const THEMES = [
-  'Leadership and Perception',
-  'Systems and Transformation',
-  'Thinking in the Age of AI',
-  'The Craft of Leadership',
-]
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-export default async function ArticlesPage() {
-  const all = await db
-    .select()
-    .from(articles)
-    .where(eq(articles.status, 'published'))
-    .orderBy(desc(articles.publishedDate))
+export default async function ArticlesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ theme?: string }>
+}) {
+  const { theme: themeSlug } = await searchParams
+  const [allThemes, articles] = await Promise.all([
+    getAllThemes(),
+    getPublishedArticlesWithThemes(),
+  ])
 
-  const articlesByTheme = THEMES.map(t => ({
-    theme: t,
-    articles: all.filter(a => a.theme === t),
-  }))
+  const explorerArticles: ExplorerArticle[] = articles.map(a => {
+    const themeNames = [
+      a.primaryTheme?.name ?? '',
+      ...a.secondaryThemes.map(s => s.name),
+    ].join(' ')
+    const bodyText = stripHtml(a.body ?? '')
+    return {
+      id: a.id,
+      title: a.title,
+      slug: a.slug,
+      excerpt: a.excerpt,
+      coverImageUrl: a.coverImageUrl,
+      coverImageAlt: a.coverImageAlt,
+      readingTime: a.readingTime,
+      publishedDate: a.publishedDate.toISOString(),
+      primaryTheme: a.primaryTheme ? { id: a.primaryTheme.id, name: a.primaryTheme.name, slug: a.primaryTheme.slug } : null,
+      secondaryThemes: a.secondaryThemes.map(s => ({ id: s.id, name: s.name, slug: s.slug })),
+      searchText: `${a.title} ${a.excerpt} ${themeNames} ${bodyText}`.toLowerCase(),
+    }
+  })
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <h1 className="text-5xl font-serif font-bold mb-4">Articles</h1>
       <p className="text-lg text-foreground/70 mb-12">Exploring leadership, systems, and thinking.</p>
 
-      {/* Theme Navigation */}
-      <div className="mb-12 pb-6 border-b border-border overflow-x-auto">
-        <div className="flex gap-4">
-          <Link href="/articles" className="whitespace-nowrap px-4 py-2 font-medium text-foreground/70 hover:text-foreground transition-colors">
-            All
-          </Link>
-          {THEMES.map(t => (
-            <Link
-              key={t}
-              href={`/articles?theme=${encodeURIComponent(t)}`}
-              className="whitespace-nowrap px-4 py-2 font-medium text-foreground/70 hover:text-foreground transition-colors"
-            >
-              {t.split(' ')[0]}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-16">
-        {articlesByTheme.map(group => (
-          <div key={group.theme}>
-            <h2 className="text-3xl font-serif font-bold mb-8">{group.theme}</h2>
-            {group.articles.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {group.articles.map(article => (
-                  <Link
-                    key={article.id}
-                    href={`/articles/${article.slug}`}
-                    className="group overflow-hidden rounded-lg border border-border hover:border-primary transition-all hover:shadow-md"
-                  >
-                    <div className="aspect-video bg-muted relative overflow-hidden">
-                      {article.coverImageUrl ? (
-                        <Image
-                          src={article.coverImageUrl}
-                          alt={article.coverImageAlt ?? article.title}
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-primary/10 to-accent/10" />
-                      )}
-                    </div>
-                    <div className="p-6">
-                      <h3 className="font-serif font-bold text-xl line-clamp-2 group-hover:text-primary transition-colors mb-3">
-                        {article.title}
-                      </h3>
-                      <p className="text-foreground/60 line-clamp-3 mb-4">{article.excerpt}</p>
-                      <div className="flex justify-between items-center text-xs text-foreground/50">
-                        <span>{article.readingTime || 5} min read</span>
-                        <span>{new Date(article.publishedDate).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p className="text-foreground/60 italic">No articles in this theme yet.</p>
-            )}
-          </div>
-        ))}
-      </div>
+      <ArticlesExplorer
+        articles={explorerArticles}
+        themes={allThemes}
+        initialThemeSlug={themeSlug}
+      />
     </div>
   )
 }

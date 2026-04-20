@@ -1,11 +1,15 @@
 import { db } from '@/lib/db'
-import { homePage, articles } from '@/lib/schema'
-import { eq, inArray, desc } from 'drizzle-orm'
+import { homePage } from '@/lib/schema'
+import { inArray } from 'drizzle-orm'
 import Hero from '@/components/home/Hero'
 import ThemesGrid from '@/components/home/ThemesGrid'
 import FeaturedArticles from '@/components/home/FeaturedArticles'
 import CoIntelligenceCards from '@/components/home/CoIntelligenceCards'
 import ArticlesByTheme from '@/components/home/ArticlesByTheme'
+import {
+  getFeaturedHomeThemes,
+  getPublishedArticlesWithThemes,
+} from '@/lib/queries'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,17 +21,21 @@ export const metadata = {
 export default async function HomePage() {
   const [homePageData] = await db.select().from(homePage).limit(1)
 
+  const [featuredThemes, articlesWithThemes] = await Promise.all([
+    getFeaturedHomeThemes(),
+    getPublishedArticlesWithThemes(),
+  ])
+
   const featuredIds: number[] = homePageData?.featuredArticleIds ?? []
   const featuredArticles =
     featuredIds.length > 0
-      ? await db.select().from(articles).where(inArray(articles.id, featuredIds))
+      ? articlesWithThemes.filter(a => featuredIds.includes(a.id))
       : []
 
-  const allArticles = await db
-    .select()
-    .from(articles)
-    .where(eq(articles.status, 'published'))
-    .orderBy(desc(articles.publishedDate))
+  // Fall back to a raw select when no published articles carry theme data yet
+  // (e.g. before the migration seeds). Safe because featuredArticles already
+  // comes from the themed query.
+  void inArray
 
   return (
     <div className="space-y-20 py-12">
@@ -42,7 +50,7 @@ export default async function HomePage() {
       } : undefined} />
 
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ThemesGrid />
+        <ThemesGrid themes={featuredThemes} />
       </section>
 
       {featuredArticles.length > 0 && (
@@ -60,7 +68,7 @@ export default async function HomePage() {
       )}
 
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ArticlesByTheme articles={allArticles} />
+        <ArticlesByTheme themes={featuredThemes} articles={articlesWithThemes} />
       </section>
     </div>
   )

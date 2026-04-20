@@ -2,40 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { db } from '@/lib/db'
-import { siteSettings, homePage, aboutPage, workPage, coIntelligencePage } from '@/lib/schema'
-import sanitizeHtml from 'sanitize-html'
-
-function sanitize(html: string) {
-  return sanitizeHtml(html, {
-    allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'iframe', 'figure', 'figcaption', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 's']),
-    allowedAttributes: {
-      ...sanitizeHtml.defaults.allowedAttributes,
-      'iframe': ['src', 'width', 'height', 'frameborder', 'allowfullscreen', 'allow', 'title'],
-      'img': ['src', 'alt', 'width', 'height', 'class', 'style'],
-      'a': ['href', 'target', 'rel', 'class'],
-      '*': ['class', 'id', 'data-youtube-video', 'data-tweet-url'],
-    },
-    allowedIframeHostnames: ['www.youtube.com', 'youtube.com', 'player.vimeo.com'],
-  })
-}
+import { siteSettings, homePage, aboutPage, workPage } from '@/lib/schema'
+import { DEFAULT_BODY_FONT, DEFAULT_HEADING_FONT, resolveFont } from '@/lib/googleFonts'
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
   if (!session?.user) throw new Error('Unauthorized')
-}
-
-async function upsert<T extends { id: number }>(
-  table: Parameters<typeof db.select>[0] extends never ? never : any,
-  values: Record<string, unknown>
-) {
-  const existing = await db.select().from(table).limit(1)
-  if (existing.length > 0) {
-    const [row] = await db.update(table).set({ ...values, updatedAt: new Date() }).returning()
-    return row
-  } else {
-    const [row] = await db.insert(table).values({ ...values }).returning()
-    return row
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -50,7 +22,6 @@ export async function GET(req: NextRequest) {
       'home-page': homePage,
       'about-page': aboutPage,
       'work-page': workPage,
-      'co-intelligence-page': coIntelligencePage,
     }
 
     const table = slug ? tableMap[slug] : null
@@ -72,7 +43,15 @@ export async function POST(req: NextRequest) {
 
     if (slug === 'site-settings') {
       const existing = await db.select().from(siteSettings).limit(1)
-      const values = { siteName: body.siteName, tagline: body.tagline, contactEmail: body.contactEmail, linkedinUrl: body.linkedinUrl, whatsappNumber: body.whatsappNumber }
+      const values = {
+        siteName: body.siteName,
+        tagline: body.tagline,
+        contactEmail: body.contactEmail,
+        linkedinUrl: body.linkedinUrl,
+        whatsappNumber: body.whatsappNumber,
+        headingFont: resolveFont(body.headingFont, DEFAULT_HEADING_FONT),
+        bodyFont: resolveFont(body.bodyFont, DEFAULT_BODY_FONT),
+      }
       let row
       if (existing.length > 0) {
         ;[row] = await db.update(siteSettings).set({ ...values, updatedAt: new Date() }).returning()
@@ -84,11 +63,16 @@ export async function POST(req: NextRequest) {
 
     if (slug === 'home-page') {
       const existing = await db.select().from(homePage).limit(1)
+      const rawFeaturedThemes: unknown[] = Array.isArray(body.featuredThemeIds) ? body.featuredThemeIds : []
+      const featuredThemeIds: number[] = Array.from(
+        new Set(rawFeaturedThemes.map(v => Number(v)).filter(n => Number.isFinite(n)))
+      ).slice(0, 4)
       const values = {
         heroHeading: body.heroHeading, heroSubheading: body.heroSubheading, heroBody: body.heroBody,
         primaryCtaLabel: body.primaryCtaLabel, primaryCtaUrl: body.primaryCtaUrl,
         secondaryCtaLabel: body.secondaryCtaLabel, secondaryCtaUrl: body.secondaryCtaUrl,
         featuredArticleIds: body.featuredArticleIds || [],
+        featuredThemeIds,
         coIntelligenceCards: body.coIntelligenceCards || [],
       }
       let row
@@ -120,19 +104,6 @@ export async function POST(req: NextRequest) {
         ;[row] = await db.update(workPage).set({ ...values, updatedAt: new Date() }).returning()
       } else {
         ;[row] = await db.insert(workPage).values(values).returning()
-      }
-      return NextResponse.json(row)
-    }
-
-    if (slug === 'co-intelligence-page') {
-      const existing = await db.select().from(coIntelligencePage).limit(1)
-      const cleanBody = sanitize(body.body || '')
-      const values = { body: cleanBody }
-      let row
-      if (existing.length > 0) {
-        ;[row] = await db.update(coIntelligencePage).set({ ...values, updatedAt: new Date() }).returning()
-      } else {
-        ;[row] = await db.insert(coIntelligencePage).values(values).returning()
       }
       return NextResponse.json(row)
     }

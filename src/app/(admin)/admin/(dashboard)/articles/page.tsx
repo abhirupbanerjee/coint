@@ -1,22 +1,26 @@
 export const dynamic = 'force-dynamic'
 
 import { db } from '@/lib/db'
-import { articles } from '@/lib/schema'
-import { desc } from 'drizzle-orm'
+import { articles, themes } from '@/lib/schema'
+import { desc, eq } from 'drizzle-orm'
 import Link from 'next/link'
 
 export const metadata = { title: 'Articles' }
 
 export default async function AdminArticlesPage() {
-  const all = await db.select({
-    id: articles.id,
-    title: articles.title,
-    slug: articles.slug,
-    theme: articles.theme,
-    status: articles.status,
-    publishedDate: articles.publishedDate,
-    likes: articles.likes,
-  }).from(articles).orderBy(desc(articles.createdAt))
+  const all = await db
+    .select({
+      id: articles.id,
+      title: articles.title,
+      slug: articles.slug,
+      themeName: themes.name,
+      status: articles.status,
+      publishedDate: articles.publishedDate,
+      likes: articles.likes,
+    })
+    .from(articles)
+    .leftJoin(themes, eq(themes.id, articles.primaryThemeId))
+    .orderBy(desc(articles.createdAt))
 
   return (
     <div>
@@ -49,7 +53,7 @@ export default async function AdminArticlesPage() {
               {all.map(article => (
                 <tr key={article.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900 max-w-xs truncate">{article.title}</td>
-                  <td className="px-4 py-3 text-gray-500 hidden md:table-cell text-xs max-w-[140px] truncate">{article.theme.split(' ')[0]}</td>
+                  <td className="px-4 py-3 text-gray-500 hidden md:table-cell text-xs max-w-[140px] truncate">{article.themeName ?? '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
                       article.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'

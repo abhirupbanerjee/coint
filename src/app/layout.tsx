@@ -1,18 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { db } from "@/lib/db";
+import { siteSettings } from "@/lib/schema";
+import {
+  DEFAULT_BODY_FONT,
+  DEFAULT_HEADING_FONT,
+  fontStack,
+  googleFontsHref,
+  resolveFont,
+} from "@/lib/googleFonts";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  display: 'swap',
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: 'swap',
-});
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cointelligence.com'),
@@ -39,16 +37,40 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+async function getFontSettings() {
+  try {
+    const [row] = await db
+      .select({ headingFont: siteSettings.headingFont, bodyFont: siteSettings.bodyFont })
+      .from(siteSettings)
+      .limit(1);
+    return {
+      headingFont: resolveFont(row?.headingFont, DEFAULT_HEADING_FONT),
+      bodyFont: resolveFont(row?.bodyFont, DEFAULT_BODY_FONT),
+    };
+  } catch {
+    return { headingFont: DEFAULT_HEADING_FONT, bodyFont: DEFAULT_BODY_FONT };
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { headingFont, bodyFont } = await getFontSettings();
+  const fontsHref = googleFontsHref([headingFont, bodyFont]);
+  const cssVars = {
+    ['--font-heading' as string]: fontStack(headingFont),
+    ['--font-body' as string]: fontStack(bodyFont),
+  } as React.CSSProperties;
+
   return (
-    <html
-      lang="en"
-      className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
-    >
+    <html lang="en" className="h-full antialiased" style={cssVars}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {fontsHref && <link rel="stylesheet" href={fontsHref} />}
+      </head>
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );

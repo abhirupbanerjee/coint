@@ -3,7 +3,7 @@
 Cointelligence is an editorial and thought-leadership platform for Richard Ramdial.
 
 It runs as a single Next.js 16 app with:
-- Public website routes (`/`, `/articles`, `/about`, `/work`, `/connect`, `/co-intelligence`)
+- Public website routes (`/`, `/articles`, `/about`, `/work`, `/connect`)
 - A custom admin dashboard (`/admin`) for content operations
 - PostgreSQL 16 + Drizzle ORM for data
 - Traefik + Docker Compose for production routing and TLS

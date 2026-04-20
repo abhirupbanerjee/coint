@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import type { Article } from '@/lib/schema'
+import type { ArticleWithThemes } from '@/lib/queries'
 
 interface FeaturedArticlesProps {
-  articles: Article[]
+  articles: ArticleWithThemes[]
 }
 
 export default function FeaturedArticles({ articles }: FeaturedArticlesProps) {
@@ -31,7 +31,9 @@ export default function FeaturedArticles({ articles }: FeaturedArticlesProps) {
             )}
           </div>
           <div className="p-6">
-            <p className="text-sm font-medium text-primary mb-2">{article.theme}</p>
+            {article.primaryTheme && (
+              <p className="text-sm font-medium text-primary mb-2">{article.primaryTheme.name}</p>
+            )}
             <h3 className="text-lg font-serif font-bold mb-3 line-clamp-2 group-hover:text-primary transition-colors">
               {article.title}
             </h3>
