@@ -1,20 +1,18 @@
 import type { MetadataRoute } from 'next'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { db } from '@/lib/db'
+import { articles } from '@/lib/schema'
+import { eq, desc } from 'drizzle-orm'
 
 export const dynamic = 'force-dynamic'
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://cointelligence.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const payload = await getPayload({ config })
-  const articles = await payload.find({
-    collection: 'articles',
-    where: { '_status': { equals: 'published' } },
-    sort: '-publishedDate',
-    limit: 1000,
-    select: { slug: true, updatedAt: true, publishedDate: true },
-  })
+  const published = await db
+    .select({ slug: articles.slug, updatedAt: articles.updatedAt, publishedDate: articles.publishedDate })
+    .from(articles)
+    .where(eq(articles.status, 'published'))
+    .orderBy(desc(articles.publishedDate))
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/`,                changeFrequency: 'weekly',  priority: 1.0 },
@@ -25,11 +23,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/connect`,         changeFrequency: 'yearly',  priority: 0.6 },
   ]
 
-  const articleRoutes: MetadataRoute.Sitemap = articles.docs.map(article => ({
+  const articleRoutes: MetadataRoute.Sitemap = published.map(article => ({
     url: `${SITE_URL}/articles/${article.slug}`,
-    lastModified: article.updatedAt
-      ? new Date(typeof article.updatedAt === 'string' ? article.updatedAt : new Date())
-      : new Date(typeof article.publishedDate === 'string' ? article.publishedDate : new Date()),
+    lastModified: article.updatedAt,
     changeFrequency: 'monthly' as const,
     priority: 0.8,
   }))

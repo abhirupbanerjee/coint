@@ -1,58 +1,66 @@
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { db } from '@/lib/db'
+import { homePage, articles } from '@/lib/schema'
+import { eq, inArray, desc } from 'drizzle-orm'
 import Hero from '@/components/home/Hero'
-
-export const dynamic = 'force-dynamic'
 import ThemesGrid from '@/components/home/ThemesGrid'
 import FeaturedArticles from '@/components/home/FeaturedArticles'
 import CoIntelligenceCards from '@/components/home/CoIntelligenceCards'
 import ArticlesByTheme from '@/components/home/ArticlesByTheme'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
-  title: {
-    absolute: 'Cointelligence',
-  },
+  title: { absolute: 'Cointelligence' },
   description: 'Editorial and thought-leadership platform by Richard Ramdial',
 }
 
 export default async function HomePage() {
-  let homePage = null
-  try {
-    const payload = await getPayload({ config })
-    homePage = await payload.findGlobal({ slug: 'home-page' })
-  } catch (err) {
-    console.error('Failed to fetch home page data:', err)
-  }
+  const [homePageData] = await db.select().from(homePage).limit(1)
+
+  const featuredIds: number[] = homePageData?.featuredArticleIds ?? []
+  const featuredArticles =
+    featuredIds.length > 0
+      ? await db.select().from(articles).where(inArray(articles.id, featuredIds))
+      : []
+
+  const allArticles = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.status, 'published'))
+    .orderBy(desc(articles.publishedDate))
 
   return (
     <div className="space-y-20 py-12">
-      {/* Hero Section */}
-      <Hero data={homePage} />
+      <Hero data={homePageData ? {
+        heroHeading: homePageData.heroHeading ?? undefined,
+        heroSubheading: homePageData.heroSubheading ?? undefined,
+        heroBody: homePageData.heroBody ?? undefined,
+        primaryCtaLabel: homePageData.primaryCtaLabel ?? undefined,
+        primaryCtaUrl: homePageData.primaryCtaUrl ?? undefined,
+        secondaryCtaLabel: homePageData.secondaryCtaLabel ?? undefined,
+        secondaryCtaUrl: homePageData.secondaryCtaUrl ?? undefined,
+      } : undefined} />
 
-      {/* Themes Grid */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <ThemesGrid />
       </section>
 
-      {/* Featured Articles */}
-      {homePage?.featuredArticles && homePage.featuredArticles.length > 0 && (
+      {featuredArticles.length > 0 && (
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-serif font-bold mb-8">Featured Articles</h2>
-          <FeaturedArticles articles={homePage.featuredArticles} />
+          <FeaturedArticles articles={featuredArticles} />
         </section>
       )}
 
-      {/* Co-Intelligence Cards */}
-      {homePage?.coIntelligenceCards && homePage.coIntelligenceCards.length > 0 && (
+      {homePageData?.coIntelligenceCards && homePageData.coIntelligenceCards.length > 0 && (
         <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-serif font-bold mb-8">Co-Intelligence</h2>
-          <CoIntelligenceCards cards={homePage.coIntelligenceCards} />
+          <CoIntelligenceCards cards={homePageData.coIntelligenceCards} />
         </section>
       )}
 
-      {/* Articles by Theme */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <ArticlesByTheme />
+        <ArticlesByTheme articles={allArticles} />
       </section>
     </div>
   )

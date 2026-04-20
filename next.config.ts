@@ -1,16 +1,15 @@
-import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  serverExternalPackages: [
-    'drizzle-kit',
-    'esbuild',
-    'esbuild-register',
-    '@esbuild/linux-x64',
-    '@libsql/linux-x64-gnu',
-    '@libsql/linux-arm64-gnu',
-  ],
+  async rewrites() {
+    return [
+      {
+        source: '/media/:path*',
+        destination: '/api/media-serve/:path*',
+      },
+    ]
+  },
   images: {
     remotePatterns: [
       {
@@ -29,4 +28,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPayload(nextConfig)
+export default nextConfig

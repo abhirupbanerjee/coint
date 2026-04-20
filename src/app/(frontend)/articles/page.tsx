@@ -1,10 +1,15 @@
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { db } from '@/lib/db'
+import { articles } from '@/lib/schema'
+import { eq, desc } from 'drizzle-orm'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Suspense } from 'react'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata = {
+  title: 'Articles',
+  description: 'Read articles on leadership, systems, thinking, and more.',
+}
 
 const THEMES = [
   'Leadership and Perception',
@@ -13,25 +18,16 @@ const THEMES = [
   'The Craft of Leadership',
 ]
 
-export const metadata = {
-  title: 'Articles',
-  description: 'Read articles on leadership, systems, thinking, and more.',
-}
-
-async function ArticlesContent({ theme }: { theme?: string }) {
-  const payload = await getPayload({ config })
-
-  const articles = await payload.find({
-    collection: 'articles',
-    where: {
-      '_status': { equals: 'published' },
-    },
-    sort: '-publishedDate',
-  })
+export default async function ArticlesPage() {
+  const all = await db
+    .select()
+    .from(articles)
+    .where(eq(articles.status, 'published'))
+    .orderBy(desc(articles.publishedDate))
 
   const articlesByTheme = THEMES.map(t => ({
     theme: t,
-    articles: articles.docs.filter(a => a.theme === t),
+    articles: all.filter(a => a.theme === t),
   }))
 
   return (
@@ -42,10 +38,7 @@ async function ArticlesContent({ theme }: { theme?: string }) {
       {/* Theme Navigation */}
       <div className="mb-12 pb-6 border-b border-border overflow-x-auto">
         <div className="flex gap-4">
-          <Link
-            href="/articles"
-            className="whitespace-nowrap px-4 py-2 font-medium text-foreground/70 hover:text-foreground transition-colors"
-          >
+          <Link href="/articles" className="whitespace-nowrap px-4 py-2 font-medium text-foreground/70 hover:text-foreground transition-colors">
             All
           </Link>
           {THEMES.map(t => (
@@ -60,7 +53,6 @@ async function ArticlesContent({ theme }: { theme?: string }) {
         </div>
       </div>
 
-      {/* Articles by Theme */}
       <div className="space-y-16">
         {articlesByTheme.map(group => (
           <div key={group.theme}>
@@ -74,10 +66,10 @@ async function ArticlesContent({ theme }: { theme?: string }) {
                     className="group overflow-hidden rounded-lg border border-border hover:border-primary transition-all hover:shadow-md"
                   >
                     <div className="aspect-video bg-muted relative overflow-hidden">
-                      {typeof article.coverImage === 'object' && article.coverImage.url ? (
+                      {article.coverImageUrl ? (
                         <Image
-                          src={article.coverImage.url}
-                          alt={article.coverImage.alt ?? article.title}
+                          src={article.coverImageUrl}
+                          alt={article.coverImageAlt ?? article.title}
                           fill
                           className="object-cover"
                           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"
@@ -106,13 +98,5 @@ async function ArticlesContent({ theme }: { theme?: string }) {
         ))}
       </div>
     </div>
-  )
-}
-
-export default function ArticlesPage() {
-  return (
-    <Suspense fallback={<div className="text-center py-12">Loading articles...</div>}>
-      <ArticlesContent />
-    </Suspense>
   )
 }

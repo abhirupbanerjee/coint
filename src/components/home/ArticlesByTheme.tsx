@@ -1,7 +1,6 @@
-import { getPayload } from 'payload'
-import config from '@/payload.config'
 import Link from 'next/link'
 import Image from 'next/image'
+import type { Article } from '@/lib/schema'
 
 const THEMES = [
   'Leadership and Perception',
@@ -10,27 +9,19 @@ const THEMES = [
   'The Craft of Leadership',
 ]
 
-export default async function ArticlesByTheme() {
-  let articles = { docs: [] as any[] }
-  try {
-    const payload = await getPayload({ config })
-    articles = await payload.find({
-      collection: 'articles',
-      where: { '_status': { equals: 'published' } },
-    })
-  } catch (err) {
-    console.error('Failed to fetch articles:', err)
-  }
+interface ArticlesByThemeProps {
+  articles: Article[]
+}
 
-  // Group by theme
-  const articlesByTheme = THEMES.map(theme => ({
+export default function ArticlesByTheme({ articles }: ArticlesByThemeProps) {
+  const grouped = THEMES.map(theme => ({
     theme,
-    articles: articles.docs.filter(a => a.theme === theme).slice(0, 3),
+    articles: articles.filter(a => a.theme === theme).slice(0, 3),
   }))
 
   return (
     <div className="space-y-16">
-      {articlesByTheme.map(group => (
+      {grouped.map(group => (
         <div key={group.theme}>
           <h2 className="text-3xl font-serif font-bold mb-8">{group.theme}</h2>
           {group.articles.length > 0 ? (
@@ -42,10 +33,10 @@ export default async function ArticlesByTheme() {
                   className="group overflow-hidden rounded-lg border border-border hover:border-primary transition-all"
                 >
                   <div className="aspect-video bg-muted relative overflow-hidden">
-                    {typeof article.coverImage === 'object' && article.coverImage.url ? (
+                    {article.coverImageUrl ? (
                       <Image
-                        src={article.coverImage.url}
-                        alt={article.coverImage.alt ?? article.title}
+                        src={article.coverImageUrl}
+                        alt={article.coverImageAlt ?? article.title}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"

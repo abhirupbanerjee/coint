@@ -1,44 +1,25 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import type { Article } from '@/lib/schema'
 
 interface FeaturedArticlesProps {
-  articles: (string | number | any)[]
+  articles: Article[]
 }
 
-export default async function FeaturedArticles({ articles }: FeaturedArticlesProps) {
-  const payload = await getPayload({ config })
-
-  // Fetch article details
-  const articleDetails = await Promise.all(
-    articles.slice(0, 3).map(async id => {
-      try {
-        return await payload.findByID({
-          collection: 'articles',
-          id: typeof id === 'object' ? id.id : id,
-        })
-      } catch {
-        return null
-      }
-    })
-  )
-
-  const validArticles = articleDetails.filter((article): article is NonNullable<typeof article> => article !== null)
-
+export default function FeaturedArticles({ articles }: FeaturedArticlesProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-      {validArticles.map(article => (
+      {articles.map(article => (
         <Link
           key={article.id}
           href={`/articles/${article.slug}`}
           className="group overflow-hidden rounded-lg border border-border hover:border-primary transition-all hover:shadow-lg"
         >
           <div className="aspect-video bg-muted relative overflow-hidden">
-            {typeof article.coverImage === 'object' && article.coverImage.url ? (
+            {article.coverImageUrl ? (
               <Image
-                src={article.coverImage.url}
-                alt={article.coverImage.alt ?? article.title}
+                src={article.coverImageUrl}
+                alt={article.coverImageAlt ?? article.title}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"
