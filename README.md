@@ -42,29 +42,21 @@ A personal editorial and thought-leadership platform for Richard Ramdial built w
      -p 5432:5432 -d postgres:16
    ```
 
-4. **Run migrations:**
+4. **Push schema to DB:**
    ```bash
-   npm run payload migrate
+   npm run db:push
    ```
 
 5. **Configure admin users in `.env.local`:**
    ```bash
-   # Single admin
    ADMIN_EMAILS=your-email@example.com
-   ADMIN_PASSWORD=your-password
-   
-   # Multiple admins
-   ADMIN_EMAILS=admin1@example.com,admin2@example.com
-   ADMIN_PASSWORD=shared-password
-   ```
-   See [Admin Configuration Guide](docs/admin-configuration.md) for details.
-
-6. **Seed admin users:**
-   ```bash
-   ADMIN_PASSWORD=your-password npx ts-node scripts/seed.ts
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   NEXTAUTH_SECRET=your-secret
+   NEXTAUTH_URL=http://localhost:3000
    ```
 
-7. **Start dev server:**
+6. **Start dev server:**
    ```bash
    npm run dev
    ```
@@ -112,12 +104,15 @@ A personal editorial and thought-leadership platform for Richard Ramdial built w
    cat > .env << 'EOF'
    NODE_ENV=production
    NEXT_PUBLIC_SITE_URL=https://yourdomain.com
-   PAYLOAD_SECRET=your-generated-secret-key
    POSTGRES_USER=cointelligence
    POSTGRES_PASSWORD=your-strong-password
    POSTGRES_DB=cointelligence
    DATABASE_URI=postgresql://cointelligence:your-strong-password@db:5432/cointelligence
-   PAYLOAD_PUBLIC_UPLOAD_DIR=/app/media
+   NEXTAUTH_SECRET=your-generated-secret
+   NEXTAUTH_URL=https://yourdomain.com
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   ADMIN_EMAILS=richard@example.com
    SITE_HOST=yourdomain.com
    EOF
    ```
@@ -144,9 +139,9 @@ A personal editorial and thought-leadership platform for Richard Ramdial built w
    docker compose up -d
    ```
 
-8. **Seed admin user (one-time):**
+8. **Initialize DB schema (first deploy only):**
    ```bash
-   docker compose exec app npx ts-node scripts/seed.ts
+   docker compose exec app npm run db:push
    ```
 
 9. **Add GitHub Actions secrets:**
@@ -195,14 +190,15 @@ docker compose up -d
 - Local: `http://localhost:3000/admin`
 - Production: `https://yourdomain.com/admin`
 
-## Phase 1 Verification
+## Verification
 
 - [ ] Navigate to `https://<domain>/admin`
-- [ ] Log in with seeded credentials
-- [ ] Edit `SiteSettings` and verify persistence
-- [ ] Upload test image to Media
+- [ ] Log in with Google (must be in `ADMIN_EMAILS`)
+- [ ] Create a test article and publish it
+- [ ] Verify it appears at `/articles/slug`
+- [ ] Upload a test image to Media library, copy URL
 - [ ] Restart: `docker compose restart app`
-- [ ] Verify image persists
+- [ ] Verify image persists (media volume working)
 - [ ] Check all services: `docker compose ps`
 
 ## Key Notes

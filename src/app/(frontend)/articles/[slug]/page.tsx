@@ -7,6 +7,7 @@ import Image from 'next/image'
 import ShareButtons from '@/components/articles/ShareButtons'
 import LikeButton from '@/components/articles/LikeButton'
 import FeedbackWidget from '@/components/articles/FeedbackWidget'
+import ArticleBody from '@/components/articles/ArticleBody'
 
 export const dynamic = 'force-dynamic'
 
@@ -114,10 +115,10 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       </header>
 
       {/* Body */}
-      <div
-        className="prose prose-lg max-w-2xl article-body"
-        dangerouslySetInnerHTML={{ __html: article.body || '' }}
-      />
+      <ArticleBody html={(article.body || '').replace(
+        /<div class="twitter-embed" data-tweet-url="([^"]+)"[^>]*><\/div>/g,
+        '<blockquote class="twitter-tweet"><a href="$1">View tweet</a></blockquote>'
+      )} />
 
       {/* Like + Feedback */}
       <div className="mt-12 pt-8 border-t border-border space-y-8">
