@@ -10,7 +10,6 @@ It runs as a single Next.js 16 app with:
 
 ## Architecture Update (Important)
 
-Payload CMS has been removed.
 
 The project now uses:
 - Drizzle ORM schema and SQL tables in [`lib/schema.ts`](lib/schema.ts)

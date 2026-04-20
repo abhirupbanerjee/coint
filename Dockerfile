@@ -25,11 +25,11 @@ WORKDIR /app
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
-# Copy from builder: node_modules, .next, and public
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
+# Next.js standalone output: server.js lives at .next/standalone/ and
+# expects ./public and ./.next/static to sit alongside it.
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/package*.json ./
 
 # Create media directory
 RUN mkdir -p /app/media
@@ -40,4 +40,4 @@ EXPOSE 3000
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
 
-CMD ["node", ".next/standalone/server.js"]
+CMD ["node", "server.js"]

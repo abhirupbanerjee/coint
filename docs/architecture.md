@@ -13,7 +13,6 @@ Cointelligence is a single Next.js 16 application with:
 - Custom admin dashboard
 - PostgreSQL 16 persistence through Drizzle ORM
 
-Payload CMS has been removed.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
