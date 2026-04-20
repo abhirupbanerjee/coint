@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { GOOGLE_FONTS, type FontCategory, fontStack } from '@/lib/googleFonts'
+import { GOOGLE_FONTS, type FontCategory, fontStack, getFontLabel } from '@/lib/googleFonts'
 
 type FilterCategory = FontCategory | 'all'
 
@@ -66,7 +66,7 @@ export default function FontPicker({ label, value, onChange, allowedCategories, 
       <div className="flex items-baseline justify-between mb-2">
         <label className="block text-sm font-medium text-gray-700">{label}</label>
         <span className="text-xs text-gray-500" style={{ fontFamily: fontStack(value) }}>
-          Currently: {value}
+          Currently: {getFontLabel(value)}
         </span>
       </div>
 
@@ -106,7 +106,7 @@ export default function FontPicker({ label, value, onChange, allowedCategories, 
             >
               <span className="w-4 shrink-0 text-gray-400">{selected ? '✓' : ''}</span>
               <span className="flex-1 min-w-0">
-                <span className="block text-xs text-gray-500">{f.family} · {CATEGORY_LABELS[f.category]}</span>
+                <span className="block text-xs text-gray-500">{f.label ?? f.family} · {CATEGORY_LABELS[f.category]}</span>
                 <span
                   className="block text-lg text-gray-900 truncate"
                   style={{ fontFamily: fontStack(f.family) }}

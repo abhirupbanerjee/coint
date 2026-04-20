@@ -13,7 +13,13 @@ const NAV_ITEMS = [
   { label: 'Connect', href: '/connect' },
 ]
 
-export function Header() {
+interface HeaderProps {
+  siteName?: string
+  logoUrl?: string | null
+  logoAlt?: string | null
+}
+
+export function Header({ siteName = 'Cointelligence', logoUrl = null, logoAlt = null }: HeaderProps) {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
 
@@ -33,8 +39,13 @@ export function Header() {
       <nav aria-label="Main navigation" className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex items-center justify-between">
           {/* Logo/Brand */}
-          <Link href="/" className="text-2xl font-serif font-bold text-foreground hover:text-primary transition-colors">
-            Cointelligence
+          <Link href="/" className="flex items-center gap-2 text-2xl font-serif font-bold text-foreground hover:text-primary transition-colors">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={logoAlt || siteName} className="h-10 w-auto max-w-[220px] object-contain" />
+            ) : (
+              <span>{siteName}</span>
+            )}
           </Link>
 
           {/* Desktop Navigation */}

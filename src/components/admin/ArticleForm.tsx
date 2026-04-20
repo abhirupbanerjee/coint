@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import type { Article, Theme } from '@/lib/schema'
+import MediaLibraryPicker from './MediaLibraryPicker'
 
 const TipTapEditor = dynamic(() => import('./TipTapEditor'), { ssr: false })
 
@@ -11,10 +12,10 @@ interface ArticleFormProps {
   article?: Article
   initialSecondaryThemeIds?: number[]
   themes: Theme[]
-  mediaItems?: { url: string; filename: string; alt: string | null }[]
 }
 
-export default function ArticleForm({ article, initialSecondaryThemeIds = [], themes, mediaItems = [] }: ArticleFormProps) {
+export default function ArticleForm({ article, initialSecondaryThemeIds = [], themes }: ArticleFormProps) {
+  const [pickerOpen, setPickerOpen] = useState(false)
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState('')
@@ -201,18 +202,48 @@ export default function ArticleForm({ article, initialSecondaryThemeIds = [], th
 
         {/* Cover Image */}
         <div>
-          <label className={labelCls}>Cover Image URL</label>
-          {mediaItems.length > 0 && (
-            <select
-              className={`${inputCls} mb-2`}
-              onChange={e => { if (e.target.value) setCoverImageUrl(e.target.value) }}
-              defaultValue=""
+          <label className={labelCls}>Cover Image</label>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="px-3 py-1.5 bg-white border border-gray-300 text-sm rounded-md hover:border-gray-500 transition-colors"
             >
-              <option value="">— Choose from media library —</option>
-              {mediaItems.map(m => <option key={m.url} value={m.url}>{m.filename}</option>)}
-            </select>
+              Browse media library
+            </button>
+            {coverImageUrl && (
+              <button
+                type="button"
+                onClick={() => { setCoverImageUrl(''); setCoverImageAlt('') }}
+                className="text-xs text-gray-500 hover:text-red-600 underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <input
+            type="text"
+            value={coverImageUrl}
+            onChange={e => setCoverImageUrl(e.target.value)}
+            className={inputCls}
+            placeholder="Or paste an image URL (/media/… or https://…)"
+          />
+          {coverImageUrl && (
+            <div className="mt-2 relative w-40 aspect-video rounded border border-gray-200 overflow-hidden bg-gray-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={coverImageUrl} alt={coverImageAlt || 'Cover preview'} className="w-full h-full object-cover" />
+            </div>
           )}
-          <input type="text" value={coverImageUrl} onChange={e => setCoverImageUrl(e.target.value)} className={inputCls} placeholder="/media/image.jpg" />
+          <MediaLibraryPicker
+            open={pickerOpen}
+            onClose={() => setPickerOpen(false)}
+            onSelect={m => {
+              setCoverImageUrl(m.url)
+              if (!coverImageAlt && m.alt) setCoverImageAlt(m.alt)
+            }}
+            title="Select cover image"
+            guidance={<>Browse images already uploaded to the Media Library. To upload a new image, use the <a href="/admin/media" className="underline">Media Library</a> page.</>}
+          />
         </div>
 
         {/* Cover Image Alt */}

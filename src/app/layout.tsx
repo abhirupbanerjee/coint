@@ -8,34 +8,46 @@ import {
   googleFontsHref,
   resolveFont,
 } from "@/lib/googleFonts";
+import { getBranding } from "@/lib/branding";
 import "./globals.css";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cointelligence.com'),
-  title: {
-    default: 'Cointelligence',
-    template: '%s | Cointelligence',
-  },
-  description: 'Editorial and thought-leadership platform by Richard Ramdial',
-  openGraph: {
-    siteName: 'Cointelligence',
-    locale: 'en_US',
-    type: 'website',
-    images: [
-      {
-        url: '/og-default.png',
-        width: 1200,
-        height: 630,
-        alt: 'Cointelligence',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { siteName, favicon } = await getBranding();
+  const title = siteName || 'Cointelligence';
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://cointelligence.com'),
+    title: {
+      default: title,
+      template: `%s | ${title}`,
+    },
+    description: 'Editorial and thought-leadership platform by Richard Ramdial',
+    icons: favicon
+      ? {
+          icon: [{ url: favicon.url, type: favicon.mimeType || undefined }],
+          shortcut: [favicon.url],
+          apple: [favicon.url],
+        }
+      : undefined,
+    openGraph: {
+      siteName: title,
+      locale: 'en_US',
+      type: 'website',
+      images: [
+        {
+          url: '/og-default.png',
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+    },
+  };
+}
 
 async function getFontSettings() {
   try {

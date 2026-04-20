@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic'
 
 import { db } from '@/lib/db'
-import { articles, articleSecondaryThemes, media, themes } from '@/lib/schema'
-import { asc, desc, eq } from 'drizzle-orm'
+import { articles, articleSecondaryThemes, themes } from '@/lib/schema'
+import { asc, eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import ArticleForm from '@/components/admin/ArticleForm'
 import { ensureThemesSeeded } from '@/lib/themes'
@@ -18,8 +18,7 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
   const [article] = await db.select().from(articles).where(eq(articles.id, articleId))
   if (!article) notFound()
 
-  const [mediaItems, allThemes, secondaryLinks] = await Promise.all([
-    db.select({ url: media.url, filename: media.filename, alt: media.alt }).from(media).orderBy(desc(media.createdAt)),
+  const [allThemes, secondaryLinks] = await Promise.all([
     db.select().from(themes).orderBy(asc(themes.order), asc(themes.id)),
     db.select({ themeId: articleSecondaryThemes.themeId }).from(articleSecondaryThemes).where(eq(articleSecondaryThemes.articleId, articleId)),
   ])
@@ -35,7 +34,6 @@ export default async function EditArticlePage({ params }: { params: Promise<{ id
         article={article}
         initialSecondaryThemeIds={secondaryLinks.map(s => s.themeId)}
         themes={allThemes}
-        mediaItems={mediaItems}
       />
     </div>
   )

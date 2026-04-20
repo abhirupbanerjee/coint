@@ -3,6 +3,8 @@ export type FontCategory = 'serif' | 'sans-serif' | 'display' | 'monospace' | 'h
 export interface GoogleFont {
   family: string
   category: FontCategory
+  /** Optional display label; defaults to `family` when omitted. */
+  label?: string
 }
 
 export const GOOGLE_FONTS: readonly GoogleFont[] = [
@@ -49,6 +51,7 @@ export const GOOGLE_FONTS: readonly GoogleFont[] = [
   { family: 'Noto Sans', category: 'sans-serif' },
   { family: 'Outfit', category: 'sans-serif' },
   { family: 'Space Grotesk', category: 'sans-serif' },
+  { family: 'Carlito', category: 'sans-serif', label: 'Carlito / Calibri' },
 
   // Display — heavy hitters for headings
   { family: 'Abril Fatface', category: 'display' },
@@ -80,6 +83,10 @@ export function resolveFont(family: string | null | undefined, fallback: string)
 
 export function getCategory(family: string): FontCategory | null {
   return GOOGLE_FONTS.find(f => f.family === family)?.category ?? null
+}
+
+export function getFontLabel(family: string): string {
+  return GOOGLE_FONTS.find(f => f.family === family)?.label ?? family
 }
 
 function genericFallbackFor(family: string): string {

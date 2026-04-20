@@ -33,6 +33,16 @@ export const articleSecondaryThemes = pgTable('article_secondary_themes', {
   themeId: integer('theme_id').notNull().references(() => themes.id, { onDelete: 'cascade' }),
 }, (t) => ({ pk: primaryKey({ columns: [t.articleId, t.themeId] }) }))
 
+export const media = pgTable('media', {
+  id: serial('id').primaryKey(),
+  filename: varchar('filename', { length: 500 }).notNull(),
+  url: varchar('url', { length: 1000 }).notNull(),
+  alt: varchar('alt', { length: 500 }),
+  size: integer('size'),
+  mimeType: varchar('mime_type', { length: 100 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
 export const siteSettings = pgTable('site_settings', {
   id: serial('id').primaryKey(),
   siteName: varchar('site_name', { length: 200 }).default('Cointelligence'),
@@ -42,6 +52,8 @@ export const siteSettings = pgTable('site_settings', {
   whatsappNumber: varchar('whatsapp_number', { length: 50 }),
   headingFont: varchar('heading_font', { length: 100 }).default('Fraunces').notNull(),
   bodyFont: varchar('body_font', { length: 100 }).default('Inter').notNull(),
+  logoMediaId: integer('logo_media_id').references(() => media.id, { onDelete: 'set null' }),
+  faviconMediaId: integer('favicon_media_id').references(() => media.id, { onDelete: 'set null' }),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 
@@ -82,16 +94,6 @@ export const contactSubmissions = pgTable('contact_submissions', {
   message: text('message').notNull(),
   articleSlug: varchar('article_slug', { length: 500 }),
   read: boolean('read').default(false),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-})
-
-export const media = pgTable('media', {
-  id: serial('id').primaryKey(),
-  filename: varchar('filename', { length: 500 }).notNull(),
-  url: varchar('url', { length: 1000 }).notNull(),
-  alt: varchar('alt', { length: 500 }),
-  size: integer('size'),
-  mimeType: varchar('mime_type', { length: 100 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
 

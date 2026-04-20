@@ -43,6 +43,11 @@ export async function POST(req: NextRequest) {
 
     if (slug === 'site-settings') {
       const existing = await db.select().from(siteSettings).limit(1)
+      const toNullableInt = (v: unknown): number | null => {
+        if (v === null || v === undefined || v === '') return null
+        const n = Number(v)
+        return Number.isFinite(n) && n > 0 ? n : null
+      }
       const values = {
         siteName: body.siteName,
         tagline: body.tagline,
@@ -51,6 +56,8 @@ export async function POST(req: NextRequest) {
         whatsappNumber: body.whatsappNumber,
         headingFont: resolveFont(body.headingFont, DEFAULT_HEADING_FONT),
         bodyFont: resolveFont(body.bodyFont, DEFAULT_BODY_FONT),
+        logoMediaId: toNullableInt(body.logoMediaId),
+        faviconMediaId: toNullableInt(body.faviconMediaId),
       }
       let row
       if (existing.length > 0) {
